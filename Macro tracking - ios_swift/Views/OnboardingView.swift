@@ -6,14 +6,26 @@ struct OnboardingView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var step = 0
 
+    // Everything starts empty — the profile (and the targets derived from it) must come from the user.
     @State private var name = ""
-    @State private var age = 25
-    @State private var sex: Sex = .male
-    @State private var heightCm: Double = 170
-    @State private var currentWeightKg: Double = 75
-    @State private var goalWeightKg: Double = 68
-    @State private var activityLevel: ActivityLevel = .moderate
-    @State private var goal: Goal = .lose
+    @State private var ageText = ""
+    @State private var sex: Sex? = nil
+    @State private var heightText = ""
+    @State private var weightText = ""
+    @State private var goalWeightText = ""
+    @State private var activityLevel: ActivityLevel? = nil
+    @State private var goal: Goal? = nil
+
+    private func number(_ text: String) -> Double? {
+        Double(text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
+    }
+    private func value(_ text: String, in range: ClosedRange<Double>) -> Double? {
+        number(text).flatMap { range.contains($0) ? $0 : nil }
+    }
+    private var ageValue: Int?       { value(ageText, in: 10...100).map { Int($0) } }
+    private var heightValue: Double? { value(heightText, in: 100...250) }
+    private var weightValue: Double? { value(weightText, in: 30...300) }
+    private var goalWeightValue: Double? { value(goalWeightText, in: 30...300) }
 
     private let totalSteps = 5
 
@@ -47,6 +59,7 @@ struct OnboardingView: View {
                     stepActivity.tag(4)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
+                .scrollDisabled(true)   // only the Continue buttons advance, so validation can't be skipped
                 .animation(.easeInOut, value: step)
             }
         }
@@ -78,18 +91,24 @@ struct OnboardingView: View {
             title: "The Basics",
             subtitle: "Used for your BMR calculation.",
             nextLabel: "Continue",
-            isNextDisabled: false,
+            isNextDisabled: sex == nil || ageValue == nil,
             onNext: { step = 2 }
         ) {
             VStack(spacing: 20) {
                 LabeledField(label: "Biological Sex") {
                     Picker("Sex", selection: $sex) {
-                        ForEach(Sex.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                        ForEach(Sex.allCases, id: \.self) { Text($0.rawValue).tag(Optional($0)) }
                     }
                     .pickerStyle(.segmented)
                 }
                 LabeledField(label: "Age") {
-                    Stepper("\(age) years old", value: $age, in: 10...100)
+                    HStack(spacing: 8) {
+                        TextField("e.g. 28", text: $ageText)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(.roundedBorder)
+                        Text("years").foregroundStyle(.secondary)
+                    }
+                    hint("Enter an age between 10 and 100", show: !ageText.isEmpty && ageValue == nil)
                 }
             }
         }
@@ -100,29 +119,27 @@ struct OnboardingView: View {
             title: "Your Body",
             subtitle: "Height and current weight.",
             nextLabel: "Continue",
-            isNextDisabled: false,
+            isNextDisabled: heightValue == nil || weightValue == nil,
             onNext: { step = 3 }
         ) {
             VStack(spacing: 20) {
-                LabeledField(label: "Height (cm)") {
-                    HStack(spacing: 12) {
-                        Slider(value: $heightCm, in: 140...220, step: 0.5)
-                        TextField("cm", value: $heightCm, format: .number)
+                LabeledField(label: "Height") {
+                    HStack(spacing: 8) {
+                        TextField("e.g. 175", text: $heightText)
                             .keyboardType(.decimalPad)
                             .textFieldStyle(.roundedBorder)
-                            .frame(width: 64)
-                            .multilineTextAlignment(.center)
+                        Text("cm").foregroundStyle(.secondary)
                     }
+                    hint("Enter a height between 100 and 250 cm", show: !heightText.isEmpty && heightValue == nil)
                 }
-                LabeledField(label: "Current Weight (kg)") {
-                    HStack(spacing: 12) {
-                        Slider(value: $currentWeightKg, in: 40...200, step: 0.5)
-                        TextField("kg", value: $currentWeightKg, format: .number)
+                LabeledField(label: "Current Weight") {
+                    HStack(spacing: 8) {
+                        TextField("e.g. 72.5", text: $weightText)
                             .keyboardType(.decimalPad)
                             .textFieldStyle(.roundedBorder)
-                            .frame(width: 64)
-                            .multilineTextAlignment(.center)
+                        Text("kg").foregroundStyle(.secondary)
                     }
+                    hint("Enter a weight between 30 and 300 kg", show: !weightText.isEmpty && weightValue == nil)
                 }
             }
         }
@@ -133,25 +150,33 @@ struct OnboardingView: View {
             title: "Your Goal",
             subtitle: "What are you working towards?",
             nextLabel: "Continue",
-            isNextDisabled: false,
+            isNextDisabled: goal == nil || goalWeightValue == nil,
             onNext: { step = 4 }
         ) {
             VStack(spacing: 20) {
                 LabeledField(label: "Goal") {
                     Picker("Goal", selection: $goal) {
-                        ForEach(Goal.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                        ForEach(Goal.allCases, id: \.self) { Text($0.rawValue).tag(Optional($0)) }
                     }
                     .pickerStyle(.segmented)
                 }
                 LabeledField(label: "Goal Weight") {
-                    HStack {
-                        Slider(value: $goalWeightKg, in: 40...200, step: 0.5)
-                        Text(String(format: "%.1f kg", goalWeightKg))
-                            .frame(width: 64)
-                            .monospacedDigit()
+                    HStack(spacing: 8) {
+                        TextField("e.g. 68", text: $goalWeightText)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(.roundedBorder)
+                        Text("kg").foregroundStyle(.secondary)
                     }
+                    hint("Enter a weight between 30 and 300 kg", show: !goalWeightText.isEmpty && goalWeightValue == nil)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func hint(_ text: String, show: Bool) -> some View {
+        if show {
+            Text(text).font(.caption).foregroundStyle(.red)
         }
     }
 
@@ -160,7 +185,7 @@ struct OnboardingView: View {
             title: "Activity Level",
             subtitle: "How active are you on a typical week?",
             nextLabel: "Create Profile",
-            isNextDisabled: false,
+            isNextDisabled: activityLevel == nil,
             onNext: { createProfile() }
         ) {
             VStack(spacing: 10) {
@@ -194,8 +219,13 @@ struct OnboardingView: View {
     }
 
     func createProfile() {
+        guard
+            let age = ageValue, let sex, let heightCm = heightValue,
+            let currentWeightKg = weightValue, let goalWeightKg = goalWeightValue,
+            let activityLevel, let goal
+        else { return }
         let profile = UserProfile(
-            name: name,
+            name: name.trimmingCharacters(in: .whitespaces),
             age: age,
             sex: sex,
             heightCm: heightCm,
