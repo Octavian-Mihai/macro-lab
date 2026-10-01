@@ -274,6 +274,14 @@ private struct FoodDetailView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Add Food")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // The decimal pad has no return key, so give it a way to close
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { gramsFocused = false }
+                    .bold()
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             Button(action: save) {
                 Text("Add \(Int(food.calories * factor)) kcal to Log")
