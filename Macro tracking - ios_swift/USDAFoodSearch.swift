@@ -18,8 +18,8 @@ struct USDAFood: Identifiable, Hashable {
 
 struct USDAFoodAPI {
 
-    // ⚠️ Replace with your key from https://fdc.nal.usda.gov/api-key-signup/
-    static let apiKey = "u8dXpzCfg6Nh86XqM9cAGdnvbKVBFY8SyCnPTld8"
+    // Loaded from the gitignored Secrets.swift (see Secrets.example.swift)
+    static let apiKey = Secrets.usdaAPIKey
 
     // Nutrient IDs in FoodData Central
     private enum NutrientID: Int {
