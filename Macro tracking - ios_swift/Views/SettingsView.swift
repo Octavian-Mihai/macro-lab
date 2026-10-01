@@ -36,6 +36,7 @@ struct SettingsView: View {
     @State private var activityLevel: ActivityLevel = .moderate
     @State private var goal: Goal = .lose
     @State private var showResetAlert = false
+    @State private var showResetProfileAlert = false
     @State private var saved = false
     @AppStorage("colorScheme") private var colorSchemeString: String = "system"
 
@@ -288,6 +289,13 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Button("Reset Profile", role: .destructive) { showResetProfileAlert = true }
+                        .frame(maxWidth: .infinity)
+                } footer: {
+                    Text("Deletes your profile and calorie targets and takes you back to setup. Your food log and weight history are kept.")
+                }
+
+                Section {
                     Button("Reset All Data", role: .destructive) { showResetAlert = true }
                         .frame(maxWidth: .infinity)
                 } footer: {
@@ -296,6 +304,12 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .onAppear { loadFromProfile() }
+            .alert("Reset Profile?", isPresented: $showResetProfileAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Reset Profile", role: .destructive) { resetProfile() }
+            } message: {
+                Text("Your profile and calorie targets will be deleted and you'll set them up again. Your food log and weight history stay.")
+            }
             .alert("Reset All Data?", isPresented: $showResetAlert) {
                 Button("Cancel", role: .cancel) {}
                 Button("Reset", role: .destructive) { resetAllData() }
@@ -429,6 +443,12 @@ struct SettingsView: View {
         try? modelContext.save()
         saved = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { saved = false }
+    }
+
+    /// Removes only the profile; RootView then shows onboarding again. Logged data is untouched.
+    private func resetProfile() {
+        modelContext.delete(profile)
+        try? modelContext.save()
     }
 
     private func resetAllData() {
