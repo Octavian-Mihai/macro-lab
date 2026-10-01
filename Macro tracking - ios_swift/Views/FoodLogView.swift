@@ -1,16 +1,6 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - Add Food Sheet
-// Opens the food database immediately. Manual entry is a fallback via "Enter manually".
-
-struct AddFoodSheet: View {
-    var body: some View {
-        // Search is the entry point; barcode and manual entry are reachable from its toolbar.
-        FoodSearchSheet()
-    }
-}
-
 // MARK: - Manual Food Entry Sheet (fallback)
 
 struct ManualFoodEntrySheet: View {
@@ -356,7 +346,7 @@ struct FoodLogView: View {
                 }
             }
             .sheet(isPresented: $showAdd) {
-                AddFoodSheet()
+                AddFoodView()
             }
         }
     }

@@ -37,7 +37,7 @@ struct MainTabView: View {
             }
         }
         .sheet(isPresented: $showAddFood) {
-            AddFoodSheet()
+            AddFoodView()
         }
         .fullScreenCover(isPresented: $showBarcode) {
             BarcodeScanSheet()
