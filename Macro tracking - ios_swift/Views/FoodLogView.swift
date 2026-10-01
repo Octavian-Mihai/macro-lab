@@ -5,25 +5,9 @@ import SwiftData
 // Opens the food database immediately. Manual entry is a fallback via "Enter manually".
 
 struct AddFoodSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    // Opens straight into the database search
-    @State private var showSearch = true
-    @State private var showBarcode = false
-    @State private var showManual = false
-
     var body: some View {
-        // Invisible anchor sheet — immediately presents search on top
-        Color.clear
-            .sheet(isPresented: $showSearch, onDismiss: { dismiss() }) {
-                FoodSearchSheet()
-            }
-            .fullScreenCover(isPresented: $showBarcode, onDismiss: { dismiss() }) {
-                BarcodeScanSheet()
-            }
-            .sheet(isPresented: $showManual, onDismiss: { dismiss() }) {
-                ManualFoodEntrySheet()
-            }
+        // Search is the entry point; barcode and manual entry are reachable from its toolbar.
+        FoodSearchSheet()
     }
 }
 

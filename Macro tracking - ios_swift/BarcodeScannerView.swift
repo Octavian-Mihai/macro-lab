@@ -205,7 +205,7 @@ struct BarcodeScanSheet: View {
     @State private var protein  = ""
     @State private var carbs    = ""
     @State private var fat      = ""
-    @State private var meal: MealType = .other
+    @State private var meal: MealType = .suggested()
 
     var body: some View {
         NavigationStack {

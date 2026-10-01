@@ -125,10 +125,45 @@ struct FoodSearchSheet: View {
     @State private var errorMsg: String? = nil
     @State private var selected: USDAFood? = nil
     @State private var searchTask: Task<Void, Never>? = nil
+    @State private var showBarcode = false
+    @State private var showManual  = false
+    @State private var toast: String? = nil
+
+    @Query(sort: \FoodEntry.date, order: .reverse) private var allEntries: [FoodEntry]
+
+    // Most recent distinct foods, for one-tap re-logging
+    private var recentFoods: [FoodEntry] {
+        var seen = Set<String>()
+        return Array(allEntries.filter { seen.insert($0.name).inserted }.prefix(8))
+    }
 
     var body: some View {
         NavigationStack {
             List {
+                if query.isEmpty && !recentFoods.isEmpty {
+                    Section("Recent — tap to log again") {
+                        ForEach(recentFoods) { entry in
+                            Button { quickLog(entry) } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(entry.name).font(.subheadline.bold()).lineLimit(1)
+                                        Text("P \(Int(entry.protein))g · C \(Int(entry.carbs))g · F \(Int(entry.fat))g")
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Text("\(Int(entry.calories)) kcal").font(.subheadline).bold()
+                                    Image(systemName: "plus.circle.fill").foregroundStyle(Color.accentColor)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                } else if query.isEmpty {
+                    Text("Search for a food, scan a barcode, or enter one manually.")
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
+                        .listRowBackground(Color.clear)
+                }
                 if isSearching {
                     HStack {
                         Spacer()
@@ -163,12 +198,57 @@ struct FoodSearchSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Done") { dismiss() }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button { showBarcode = true } label: {
+                            Label("Scan Barcode", systemImage: "barcode.viewfinder")
+                        }
+                        Button { showManual = true } label: {
+                            Label("Enter Manually", systemImage: "square.and.pencil")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
                 }
             }
             .sheet(item: $selected) { food in
-                FoodPortionSheet(food: food)
+                // Closing the whole flow after a save avoids a second "Cancel" tap
+                FoodPortionSheet(food: food) { dismiss() }
             }
+            .fullScreenCover(isPresented: $showBarcode) { BarcodeScanSheet() }
+            .sheet(isPresented: $showManual) { ManualFoodEntrySheet() }
+            .overlay(alignment: .bottom) {
+                if let toast {
+                    Label(toast, systemImage: "checkmark.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(.regularMaterial, in: Capsule())
+                        .padding(.bottom, 24)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+        }
+    }
+
+    // Re-log a previous entry as-is, stamped now, with the meal for this time of day
+    private func quickLog(_ entry: FoodEntry) {
+        modelContext.insert(FoodEntry(
+            name: entry.name, calories: entry.calories,
+            protein: entry.protein, carbs: entry.carbs, fat: entry.fat,
+            meal: MealType.suggested()
+        ))
+        try? modelContext.save()
+        if health.isAuthorized {
+            Task { await health.saveDietaryCalories(entry.calories, name: entry.name) }
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation { toast = "Added \(entry.name)" }
+        Task {
+            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            withAnimation { toast = nil }
         }
     }
 
@@ -242,6 +322,7 @@ struct FoodSearchRow: View {
 
 struct FoodPortionSheet: View {
     let food: USDAFood
+    var onSaved: () -> Void = {}
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss)      private var dismiss
@@ -249,7 +330,7 @@ struct FoodPortionSheet: View {
 
     // USDA values are per 100g — user picks serving size
     @State private var servingGrams: Double = 100
-    @State private var meal: MealType = .other
+    @State private var meal: MealType = .suggested()
     @State private var syncToHealth = true
 
     private var factor: Double { servingGrams / 100.0 }
@@ -276,9 +357,13 @@ struct FoodPortionSheet: View {
                         HStack {
                             Text("Grams")
                             Spacer()
-                            Text(String(format: "%.0f g", servingGrams))
+                            TextField("100", value: $servingGrams, format: .number.precision(.fractionLength(0...1)))
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
                                 .monospacedDigit()
                                 .bold()
+                                .frame(width: 80)
+                            Text("g").bold()
                         }
                         Slider(value: $servingGrams, in: 5...500, step: 5)
 
@@ -332,6 +417,11 @@ struct FoodPortionSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") { save() }
+                        .bold()
+                        .disabled(servingGrams <= 0)
+                }
             }
         }
     }
@@ -360,6 +450,8 @@ struct FoodPortionSheet: View {
         if syncToHealth && health.isAuthorized {
             Task { await health.saveDietaryCalories(displayCalories, name: food.name) }
         }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
         dismiss()
+        onSaved()
     }
 }

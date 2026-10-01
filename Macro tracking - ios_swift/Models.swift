@@ -161,6 +161,16 @@ enum MealType: String, Codable, CaseIterable {
     case snack     = "Snack"
     case other     = "Other"
 
+    /// Best-guess meal for the time of day, so users rarely need to pick one.
+    static func suggested(for date: Date = Date()) -> MealType {
+        switch Calendar.current.component(.hour, from: date) {
+        case 5..<11:  return .breakfast
+        case 11..<15: return .lunch
+        case 17..<22: return .dinner
+        default:      return .snack
+        }
+    }
+
     var icon: String {
         switch self {
         case .breakfast: return "sun.rise.fill"
