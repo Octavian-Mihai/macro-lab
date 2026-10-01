@@ -220,6 +220,7 @@ struct BarcodeScanSheet: View {
                     confirmView
                 }
             }
+            .keyboardDoneButton()
             .navigationTitle(isScanning ? "Scan Barcode" : "Confirm Food")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

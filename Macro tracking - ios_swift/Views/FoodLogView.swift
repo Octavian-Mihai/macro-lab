@@ -51,6 +51,7 @@ struct ManualFoodEntrySheet: View {
                 .padding(.bottom, 40)
             }
             .background(Color(.systemGroupedBackground))
+            .keyboardDoneButton()
             .navigationTitle("Enter Manually")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -281,6 +282,7 @@ struct LogWeightSheet: View {
                     }
                 }
             }
+            .keyboardDoneButton()
             .navigationTitle("Log Weight")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

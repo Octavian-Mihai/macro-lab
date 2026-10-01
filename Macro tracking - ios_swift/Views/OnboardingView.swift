@@ -18,6 +18,11 @@ struct OnboardingView: View {
     private let totalSteps = 5
 
     var body: some View {
+        bodyContent
+            .keyboardDoneButton()
+    }
+
+    private var bodyContent: some View {
         ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
             VStack(spacing: 0) {
