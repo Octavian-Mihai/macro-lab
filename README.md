@@ -4,6 +4,12 @@ A SwiftUI + SwiftData iOS app for tracking food and macros, with an adaptive eng
 
 
 
+## Screenshots
+
+Today dashboard, food log and progress charts (iOS simulator, sample data).
+
+![Macro Lab: Today, Log and Progress screens](docs/screenshots/app.png)
+
 ## Architecture
 
 ```mermaid
